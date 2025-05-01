@@ -9,7 +9,7 @@ const PUBLIC_ROUTES = ["/login", "/signup"];
 
 // Routes that require authentication
 // Add any other protected routes here (e.g., '/settings', '/profile')
-const PROTECTED_ROUTES_PREFIXES = ["/chat", "/"]; // Protect root and /chat/*
+const PROTECTED_ROUTES_PREFIXES = ["/chat/", "/"]; // Protect root and /chat/* (note the trailing slash for /chat/)
 
 // API routes that should bypass this middleware (or have their own auth checks)
 const API_AUTH_ROUTES_PREFIX = "/api/auth";
@@ -57,17 +57,26 @@ export async function middleware(req) {
 
   // --- Logic ---
 
-  // 1. Trying to access a PROTECTED route WITHOUT authentication
-  if (isProtectedRoute && !isAuthenticated) {
+  if (isPublicRoute && !isAuthenticated) {
     console.log(
-      `[Middleware] Denied access to ${pathname} (unauthenticated). Redirecting to /login.`
+      `[Middleware] not authenticated user accessing ${pathname}. Redirecting to /. public ${isPublicRoute}`
     );
-    const loginUrl = new URL("/login", req.url); // Construct absolute URL for redirection
-    loginUrl.searchParams.set("redirectedFrom", pathname); // Optional: Pass redirect path
-    return NextResponse.redirect(loginUrl);
+    // const homeUrl = new URL(`${pathname}`, req.url); // Redirect to home/dashboard
+    // return NextResponse.redirect(homeUrl);
   }
 
-  // 2. Trying to access a PUBLIC route (login/signup) WITH authentication
+  // 1. Trying to access a PROTECTED route WITHOUT authentication
+  // if (isProtectedRoute && !isAuthenticated) {
+  //   console.log(
+  //     `[Middleware] Denied access to ${pathname} (unauthenticated). Redirecting to /login.`
+  //   );
+  //   const loginUrl = new URL("/login", req.url); // Construct absolute URL for redirection
+  //   loginUrl.searchParams.set("redirectedFrom", pathname); // Optional: Pass redirect path
+  //   return NextResponse.redirect(loginUrl);
+  // }
+
+  // 2. Trying to access a PUBLIC route (login/signup) WITHOUT authentication
+
   if (isPublicRoute && isAuthenticated) {
     console.log(
       `[Middleware] Authenticated user accessing ${pathname}. Redirecting to /.`
@@ -99,19 +108,15 @@ export async function middleware(req) {
 
 // --- Matcher ---
 // Define the paths where this middleware should run.
-// This avoids running it on unnecessary routes like static files or API endpoints handled elsewhere.
+// Now we explicitly include the public routes and the protected prefixes.
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - /public (public assets) - Adjust if your public assets are served differently
-     * - /api/auth/ (authentication API routes)
-     * - /api/socket (Socket.IO endpoint)
-     * We want it to run on '/' and '/chat/*' and '/login', '/signup'.
+     * Match specific paths: /login, /signup, and any path starting with /chat/ or /.
+     * Exclude Next.js internals, static files, images, public assets, and API routes.
      */
+    "/login",
+    "/signup",
     "/((?!_next/static|_next/image|favicon.ico|public/|api/auth/|api/socket).*)",
   ],
 };
